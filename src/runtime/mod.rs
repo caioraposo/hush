@@ -579,11 +579,17 @@ impl Runtime {
 	) -> Result<Value, Panic> {
 
 		let value = match function {
-			Function::Hush(HushFun { params, frame_info, body, context, .. }) => {
+			Function::Hush(HushFun { params, frame_info, body, memo, context, .. }) => {
 				let args_count = (self.arguments.len() - args_start) as u32;
 
 				// Make sure we clean the arguments vector even when early returning.
-				let arguments = self.arguments.drain(args_start..);
+				let arguments: Vec<_> = self.arguments.drain(args_start..).collect();
+
+				// Check memoization table
+				let key = arguments.iter().map(|x| x.copy()).collect();
+				if memo.borrow().contains_key(&key) {
+					return Ok(memo.borrow().get(&key).unwrap().copy());
+				}
 
 				if args_count != *params {
 					return Err(Panic::invalid_args(args_count, *params, pos));
@@ -594,7 +600,7 @@ impl Runtime {
 					.map_err(|_| Panic::stack_overflow(pos))?;
 
 				// Place arguments
-				for (ix, value) in arguments.enumerate() {
+				for (ix, value) in arguments.into_iter().enumerate() {
 					self.stack.store(mem::SlotIx(ix as u32), value);
 				}
 
@@ -625,11 +631,15 @@ impl Runtime {
 
 				let flow = result?;
 
-				match flow {
+				let value = match flow {
 					Flow::Regular(value) => value,
 					Flow::Return(value) => value,
 					Flow::Break => panic!("break outside loop"),
-				}
+				};
+
+				// Update memoization table
+				memo.borrow_mut().insert(key, value.copy());
+				value
 			}
 
 			Function::Rust(fun) => {
