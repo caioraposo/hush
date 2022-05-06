@@ -221,6 +221,8 @@ impl Runtime {
 
 			// Function.
 			program::Literal::Function { params, frame_info, body } => {
+				let memo = HashMap::new();
+
 				let context = frame_info
 					.captures
 					.iter()
@@ -234,7 +236,7 @@ impl Runtime {
 
 				Ok(
 					Flow::Regular(
-						HushFun::new(*params, frame_info, body, context, pos.into()).into()
+						HushFun::new(*params, frame_info, body, context, memo, pos.into()).into()
 					)
 				)
 			},

@@ -1,5 +1,6 @@
 use std::{
 	cmp::Ordering,
+	collections::HashMap,
 	fmt::{self, Debug},
 	hash::{Hash, Hasher},
 };
@@ -71,6 +72,8 @@ pub struct HushFun {
 	/// Captured variables, if any.
 	#[allow(clippy::type_complexity)]
 	pub context: Gc<Box<[(Gc<GcCell<Value>>, mem::SlotIx)]>>,
+	// Memoization table
+	pub memo: Gc<GcCell<HashMap<Vec<Value>, Value>>>,
 	pub pos: SourcePos,
 }
 
@@ -81,6 +84,7 @@ impl HushFun {
 		frame_info: &'static program::mem::FrameInfo,
 		body: &'static program::Block,
 		context: Box<[(Gc<GcCell<Value>>, mem::SlotIx)]>,
+		memo: HashMap<Vec<Value>, Value>,
 		pos: SourcePos,
 	) -> Self {
 		Self {
@@ -88,6 +92,7 @@ impl HushFun {
 			frame_info,
 			body,
 			context: Gc::new(context),
+			memo: Gc::new(GcCell::new(memo)),
 			pos,
 		}
 	}
@@ -100,6 +105,7 @@ impl HushFun {
 			frame_info: self.frame_info,
 			body: self.body,
 			context: self.context.clone(),
+			memo: self.memo.clone(),
 			pos: self.pos.copy(),
 		}
 	}
