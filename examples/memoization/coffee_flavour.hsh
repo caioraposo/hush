@@ -1,0 +1,35 @@
+let Coffee = function(flavour)
+    @[
+        _flavour: flavour,
+    ]
+end
+
+let CoffeeShop = function()
+    @[
+        _orders: @[],
+
+        take_order: function(flavour, table_number)
+            self._orders[table_number] = Coffee(flavour)
+        end,
+    ]
+end
+
+let s = CoffeeShop()
+s.take_order("Cappuccino", 1)
+s.take_order("Americano", 54)
+s.take_order("Espresso", 23)
+s.take_order("Espresso", 15)
+s.take_order("Black", 8)
+s.take_order("Espresso", 2)
+
+for c in std.iter(s._orders) do
+    std.print(c["key"], c["value"]._flavour)
+end
+
+std.print()
+
+s._orders[23]._flavour = "Latte"
+
+for c in std.iter(s._orders) do
+    std.print(c["key"], c["value"]._flavour)
+end

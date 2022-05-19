@@ -1,0 +1,21 @@
+function fib(n)
+    if n < 2 then
+        1
+    else
+        fib(n - 1) + fib(n - 2)
+    end
+end
+
+# n is for avoiding memoizing the time function
+function time(n)
+	let t = ${ date -u +"%s%N" }
+	return std.int(std.trim(t["stdout"]))
+end
+
+${ echo n,time,fib(n) > data/fib-results.csv } # csv header
+for i in std.range(1, 41, 1) do
+	let t = time(i)
+    let r = fib(i)
+    t = (time(-i) - t) / 1000000
+    ${ echo $i,$t,$r >> data/fib-results.csv }
+end
