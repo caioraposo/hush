@@ -290,11 +290,37 @@ where
 						.expect("there should be an identifier");
 
 					let (params, body) = self.parse_function()?;
+					let is_memoized = false;
 
 					Ok(
 						ast::Statement::Let {
 							identifier,
-							init: ast::Expr::Literal { literal: ast::Literal::Function { params, body }, pos },
+							init: ast::Expr::Literal { literal: ast::Literal::Function { params, body, is_memoized }, pos },
+							pos: id_pos,
+						}
+					)
+				}
+
+			// Memoized let function.
+			Some(Token { kind: TokenKind::Keyword(Keyword::Memo), pos }) => {
+					self.step();
+
+					self.expect(TokenKind::Keyword(Keyword::Function))
+						.with_sync(sync::Strategy::keyword(Keyword::Function))
+						.synchronize(self);
+
+					// FIXME: identifiers should be optional, just like normal functions
+					let (identifier, id_pos) = self
+						.parse_identifier()
+						.synchronize(self);
+
+					let (params, body) = self.parse_function()?;
+					let is_memoized = true;
+
+					Ok(
+						ast::Statement::Let {
+							identifier,
+							init: ast::Expr::Literal { literal: ast::Literal::Function { params, body, is_memoized }, pos },
 							pos: id_pos,
 						}
 					)
@@ -641,8 +667,20 @@ where
 				self.step();
 
 				let (params, body) = self.parse_function()?;
+				let is_memoized = false;
 
-				Ok(ast::Expr::Literal { literal: ast::Literal::Function { params, body }, pos })
+				Ok(ast::Expr::Literal { literal: ast::Literal::Function { params, body, is_memoized }, pos })
+			}
+
+			// Memo literal.
+			Some(Token { kind: TokenKind::Keyword(Keyword::Memo), pos }) => {
+				self.step();
+				self.step();
+
+				let (params, body) = self.parse_function()?;
+				let is_memoized = true;
+
+				Ok(ast::Expr::Literal { literal: ast::Literal::Function { params, body, is_memoized }, pos })
 			}
 
 			// Command blocks.

@@ -156,7 +156,10 @@ impl<'a> Display<'a> for Literal {
 				"]".fmt(f)
 			},
 
-			Self::Function { params, body } => {
+			Self::Function { params, body, is_memoized } => {
+				if *is_memoized {
+					Keyword::Memo.fmt(f)?;
+				}
 				Keyword::Function.fmt(f)?;
 				"(".fmt(f)?;
 

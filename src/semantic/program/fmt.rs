@@ -149,9 +149,12 @@ impl<'a> Display<'a> for Literal {
 				"]".fmt(f)
 			},
 
-			Self::Function { params, frame_info, body } => {
+			Self::Function { params, frame_info, body, is_memoized } => {
 				let step = if context.indentation.is_some() { "\n" } else { " " };
 
+				if *is_memoized {
+					Keyword::Memo.fmt(f)?;
+				}
 				Keyword::Function.fmt(f)?;
 				"(".fmt(f)?;
 

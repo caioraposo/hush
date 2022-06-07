@@ -68,6 +68,7 @@ pub fn to_token(word: &[u8], interner: &mut SymbolInterner) -> TokenKind {
 		b"function" => TokenKind::Keyword(Keyword::Function),
 		b"return" => TokenKind::Keyword(Keyword::Return),
 		b"break" => TokenKind::Keyword(Keyword::Break),
+		b"memo" => TokenKind::Keyword(Keyword::Memo),
 		b"self" => TokenKind::Keyword(Keyword::Self_),
 
 		// Literals:

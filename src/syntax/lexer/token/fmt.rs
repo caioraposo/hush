@@ -36,6 +36,7 @@ impl std::fmt::Display for Keyword {
 					Self::Function => "function",
 					Self::Return => "return",
 					Self::Break => "break",
+					Self::Memo => "memo",
 					Self::Self_ => "self",
 				}
 			)

@@ -220,8 +220,8 @@ impl Runtime {
 			}
 
 			// Function.
-			program::Literal::Function { params, frame_info, body } => {
-				let memo = HashMap::new();
+			program::Literal::Function { params, frame_info, body, is_memoized } => {
+				let memo_table = HashMap::new();
 
 				let context = frame_info
 					.captures
@@ -236,7 +236,7 @@ impl Runtime {
 
 				Ok(
 					Flow::Regular(
-						HushFun::new(*params, frame_info, body, context, memo, pos.into()).into()
+						HushFun::new(*params, frame_info, body, context, *is_memoized, memo_table, pos.into()).into()
 					)
 				)
 			},
@@ -579,7 +579,7 @@ impl Runtime {
 	) -> Result<Value, Panic> {
 
 		let value = match function {
-			Function::Hush(HushFun { params, frame_info, body, memo, context, .. }) => {
+			Function::Hush(HushFun { params, frame_info, body, is_memoized, memo_table, context, .. }) => {
 				let args_count = (self.arguments.len() - args_start) as u32;
 
 				// Make sure we clean the arguments vector even when early returning.
@@ -587,8 +587,10 @@ impl Runtime {
 
 				// Check memoization table
 				let key = arguments.iter().map(|x| x.copy()).collect();
-				if memo.borrow().contains_key(&key) {
-					return Ok(memo.borrow().get(&key).unwrap().copy());
+				if *is_memoized {
+					if memo_table.borrow().contains_key(&key) {
+						return Ok(memo_table.borrow().get(&key).unwrap().copy());
+					}
 				}
 
 				if args_count != *params {
@@ -638,7 +640,9 @@ impl Runtime {
 				};
 
 				// Update memoization table
-				memo.borrow_mut().insert(key, value.copy());
+				if *is_memoized {
+					memo_table.borrow_mut().insert(key, value.copy());
+				}
 				value
 			}
 

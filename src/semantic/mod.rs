@@ -483,7 +483,7 @@ impl<'a> Analyzer<'a> {
 			}
 
 			// Function.
-			ast::Literal::Function { params, body } => {
+			ast::Literal::Function { params, body, is_memoized } => {
 				let mut analyzer = self.enter_frame();
 
 				let params_result = params
@@ -517,7 +517,8 @@ impl<'a> Analyzer<'a> {
 					Literal::Function {
 						params: params.len() as u32,
 						frame_info,
-						body
+						body,
+						is_memoized
 					}
 				)
 			}

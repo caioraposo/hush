@@ -131,6 +131,7 @@ pub enum Literal {
 		/// A list of parameters (identifiers).
 		params: Box<[(Symbol, SourcePos)]>,
 		body: Block,
+		is_memoized: bool,
 	},
 	/// For the dot access operator, we want to be able to have identifiers as literal
 	/// strings instead of names for variables. This variant should only be used in such

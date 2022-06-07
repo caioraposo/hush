@@ -19,6 +19,7 @@ pub enum Keyword {
 	Function,
 	Return,
 	Break,
+	Memo,
 	Self_,
 }
 
