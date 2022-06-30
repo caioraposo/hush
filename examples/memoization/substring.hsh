@@ -2,7 +2,29 @@ let out = ${ cat data/sars-cov-2.txt }
 let a = out["stdout"]
 let b = "AGCTACGAT"
 
+let table = @[]
+
 function sub(m, n)
+    if (m == 0 and n == 0) or n == 0 then
+        return 1
+    end
+    if m == 0 then
+        return 0
+    end
+    if std.contains(table, [m, n]) then
+        return table[[m, n]]
+    end
+
+    if a[m - 1] == b[n - 1] then
+        table[[m, n]] = sub(m - 1, n - 1) + sub(m - 1, n)
+    else
+        table[[m, n]] = sub(m - 1, n)
+    end
+    table[[m, n]]
+end
+
+
+memo function msub(m, n)
     if (m == 0 and n == 0) or n == 0 then
         return 1
     end
@@ -11,19 +33,25 @@ function sub(m, n)
     end
 
     if a[m - 1] == b[n - 1] then
-        return sub(m - 1, n - 1) + sub(m - 1, n)
+        msub(m - 1, n - 1) + msub(m - 1, n)
     else
-        return sub(m - 1, n)
+        msub(m - 1, n)
     end
 end
 
-# n is for avoiding memoizing the time function
-function time(n)
-	let t = ${ date -u +"%s%N" }
+function time()
+	let t = ${ python -c "from time import time; print(int(round(time() * 1000)))" }
 	return std.int(std.trim(t["stdout"]))
 end
 
-let t = time(1)
+std.print("Using Hush dict")
+let t = time()
 std.print("Occurs:", sub(std.len(a), std.len(b)))
-t = (time(2) - t) / 1000000
+t = (time() - t) / 1000000
+std.print(t, "ms")
+
+std.print("\nUsing memo keyword")
+t = time()
+std.print("Occurs:", msub(std.len(a), std.len(b)))
+t = (time() - t) / 1000000
 std.print(t, "ms")
