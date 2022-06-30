@@ -1,0 +1,35 @@
+function time()
+	let t = ${ python -c "from time import time; print(int(round(time() * 1000)))" }
+	return std.int(std.trim(t["stdout"]))
+end
+
+function min(a, b, c)
+    if a <= b and a <= c then
+        return a
+    end
+    if b <= a and b <= c then
+        return b
+    end
+    c
+end
+
+memo function lev(a, b)
+    if std.len(b) == 0 then
+        return std.len(a)
+    end
+    if std.len(a) == 0 then
+        return std.len(b)
+    end
+    if a[0] == b[0] then
+        return lev(std.substr(a, 1, std.len(a)-1), std.substr(b, 1, std.len(b)-1))
+    end
+    1 + min(lev(std.substr(a, 1, std.len(a)-1), b), lev(a, std.substr(b, 1, std.len(b)-1)), lev(std.substr(a, 1, std.len(a)-1), std.substr(b, 1, std.len(b)-1)))
+end
+
+let r = "ACTTGGGAATTT"
+let s = "TTGCCGCATAGC"
+
+let t = time()
+std.print("Dist:", lev(r, s))
+t = (time() - t) / 1000000
+std.print(t, "ms")
