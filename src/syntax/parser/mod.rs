@@ -216,7 +216,7 @@ where
 	}
 
 
-	/// Parse a block of statements, stopping when ELSE, END of EOF are reached, or after a
+	/// Parse a block of statements, stopping when ELSE, ELSEIF, END of EOF are reached, or after a
 	/// return is parsed. The Lua-like grammar requires stopping after such conditions.
 	/// This method synchronizes on all errors, producing an empty block if no statements
 	/// can be parsed.
@@ -264,17 +264,17 @@ where
 					.parse_identifier()
 					.synchronize(self);
 
-				let init;
-				if matches!(self.token, Some(Token { kind: TokenKind::Operator(Operator::Assign), .. })) {
-					self.step();
-					// Don't synchronize here because this expression is the last part of the statement.
-					init = self.parse_expression()?;
-				} else {
-					init = ast::Expr::Literal {
-						literal: ast::Literal::default(),
-						pos,
+				let init =
+					if matches!(self.token, Some(Token { kind: TokenKind::Operator(Operator::Assign), .. })) {
+						self.step();
+						// Don't synchronize here because this expression is the last part of the statement.
+						self.parse_expression()?
+					} else {
+						ast::Expr::Literal {
+							literal: ast::Literal::default(),
+							pos,
+						}
 					};
-				}
 
 				Ok(ast::Statement::Let { identifier, init, pos })
 			}
@@ -703,37 +703,10 @@ where
 			Some(Token { kind: TokenKind::Keyword(Keyword::If), pos }) => {
 				self.step();
 
-				let condition = self.parse_expression()
-					.synchronize(self);
+				let (condition, then, otherwise) = self.parse_condblock()?;
 
-				self.expect(TokenKind::Keyword(Keyword::Then))
-					.with_sync(sync::Strategy::keep())
-					.synchronize(self);
-
-				let then = self.parse_block();
-
-				let otherwise = {
-					let has_else = self
-						.eat(
-							|token| match token {
-								Token { kind: TokenKind::Keyword(Keyword::End), .. } => Ok(false),
-								Token { kind: TokenKind::Keyword(Keyword::Else), .. } => Ok(true),
-								token => Err((Error::unexpected_msg(token.clone(), "end or else"), token)),
-							}
-						)
-						.with_sync(sync::Strategy::block_terminator())?;
-
-					if has_else {
-						let block = self.parse_block();
-
-						self.expect(TokenKind::Keyword(Keyword::End))
-							.with_sync(sync::Strategy::keyword(Keyword::End))?;
-
-						block
-					} else {
-						ast::Block::default()
-					}
-				};
+				self.expect(TokenKind::Keyword(Keyword::End))
+					.with_sync(sync::Strategy::keyword(Keyword::End))?;
 
 				Ok(ast::Expr::If {
 					condition: condition.into(),
@@ -816,5 +789,49 @@ where
 			.with_sync(sync::Strategy::keyword(Keyword::End))?;
 
 		Ok((params, body))
+	}
+
+
+	/// Parse an if-else expression after the if keyword
+	/// Returns the if condition and the it+else blocks
+	fn parse_condblock(&mut self) -> sync::Result<(Box<ast::Expr>, ast::Block, ast::Block), Error> {
+		let condition = self.parse_expression()
+			.synchronize(self);
+
+		self.expect(TokenKind::Keyword(Keyword::Then))
+			.with_sync(sync::Strategy::keep())
+			.synchronize(self);
+
+		let then = self.parse_block();
+
+		let otherwise = match self.token.take() {
+			Some(token @ Token { kind: TokenKind::Keyword(Keyword::End), .. }) => {
+				self.token = Some(token);
+				ast::Block::default()
+			},
+
+			Some(Token { kind: TokenKind::Keyword(Keyword::ElseIf), pos, .. }) => {
+				self.step();
+
+				let (condition, then, otherwise) = self.parse_condblock()?;
+
+				let stmt = ast::Statement::Expr(ast::Expr::If { condition, then, otherwise, pos, });
+
+				ast::Block::Block(Box::new([stmt]))
+			},
+
+			Some(Token { kind: TokenKind::Keyword(Keyword::Else), .. }) => {
+				self.step();
+				self.parse_block()
+			},
+
+			Some(token) => Err(Error::unexpected_msg(token, "end, else or elseif"))
+				.with_sync(sync::Strategy::block_terminator())?,
+
+			None => Err(Error::unexpected_eof())
+				.with_sync(sync::Strategy::eof())?
+		};
+
+		Ok((Box::new(condition), then, otherwise))
 	}
 }
