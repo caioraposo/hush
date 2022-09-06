@@ -12,7 +12,10 @@ pub mod value;
 #[cfg(test)]
 mod tests;
 
-use std::{collections::HashMap, ops::Deref};
+use std::{cell::RefCell, collections::HashMap, ops::Deref};
+
+thread_local!(static MEMO_TABLE: RefCell<HashMap<Vec<Value>, Value>> = RefCell::new(HashMap::new()));
+
 
 use crate::symbol::{self, Symbol};
 use super::semantic::program;
@@ -588,9 +591,16 @@ impl Runtime {
 				// Check memoization table
 				let key = arguments.iter().map(|x| x.copy()).collect();
 				if *is_memoized {
-					if memo_table.borrow().contains_key(&key) {
-						return Ok(memo_table.borrow().get(&key).unwrap().copy());
-					}
+					let val = MEMO_TABLE.with(|m| {
+						if m.borrow().contains_key(&key) {
+							Some(m.borrow().get(&key).unwrap().copy())
+						} else {
+							None
+						}
+					});
+					if let Some(v) = val {
+						return Ok(v);
+					};
 				}
 
 				if args_count != *params {
@@ -641,7 +651,9 @@ impl Runtime {
 
 				// Update memoization table
 				if *is_memoized {
-					memo_table.borrow_mut().insert(key, value.copy());
+					MEMO_TABLE.with(|m| {
+						m.borrow_mut().insert(key, value.copy());
+					});
 				}
 				value
 			}
