@@ -1,8 +1,10 @@
 use std::{
+	cell::RefCell,
 	cmp::Ordering,
 	collections::HashMap,
 	fmt::{self, Debug},
 	hash::{Hash, Hasher},
+	rc::Rc,
 };
 
 use gc::{Gc, GcCell, Finalize, Trace};
@@ -75,7 +77,8 @@ pub struct HushFun {
 	// If memoization is active.
 	pub is_memoized: bool,
 	// Memoization table.
-	pub memo_table: Gc<GcCell<HashMap<Vec<Value>, Value>>>,
+	#[unsafe_ignore_trace]
+	pub memo_table: Rc<RefCell<HashMap<Vec<Value>, Value>>>,
 	pub pos: SourcePos,
 }
 
@@ -96,7 +99,7 @@ impl HushFun {
 			body,
 			context: Gc::new(context),
 			is_memoized,
-			memo_table: Gc::new(GcCell::new(memo_table)),
+			memo_table: Rc::new(RefCell::new(memo_table)),
 			pos,
 		}
 	}
