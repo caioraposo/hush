@@ -12,7 +12,7 @@ pub mod value;
 #[cfg(test)]
 mod tests;
 
-use std::{collections::HashMap, ops::Deref};
+use std::{collections::HashMap, ops::Deref, rc::Rc};
 
 use crate::symbol::{self, Symbol};
 use super::semantic::program;
@@ -449,7 +449,12 @@ impl Runtime {
 						match (obj, field) {
 							// Note that strings are immutable.
 
-							(Value::Dict(ref dict), field) => dict.insert(field, value),
+							(Value::Dict(ref dict), field) => {
+								if dict.is_memo_obj && dict.contains(&field) {
+									return Err(Panic::user(Value::from("cannot mutate a memoized object"), obj_pos));
+								}
+								dict.insert(field, value)
+							},
 
 							(Value::Array(ref array), Value::Int(ix)) if ix >= array.len() => return Err(
 								Panic::index_out_of_bounds(Value::Int(ix), field_pos)
@@ -633,7 +638,7 @@ impl Runtime {
 
 				let flow = result?;
 
-				let value = match flow {
+				let mut value = match flow {
 					Flow::Regular(value) => value,
 					Flow::Return(value) => value,
 					Flow::Break => panic!("break outside loop"),
@@ -641,6 +646,11 @@ impl Runtime {
 
 				// Update memoization table
 				if *is_memoized {
+					// Update the dict if it is a memo object
+					if let Value::Dict(ref mut dict) = value {
+						dict.is_memo_obj = true;
+						dict.memo_table = Rc::clone(memo_table);
+					}
 					memo_table.borrow_mut().insert(key, value.copy());
 				}
 				value
