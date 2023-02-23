@@ -117,6 +117,12 @@ pub enum Value {
 	Error(Error),
 }
 
+/// Clone using shallow copy
+impl Clone for Value {
+	fn clone(&self) -> Self {
+		self.copy()
+	}
+}
 
 impl Value {
 	/// Make a shallow copy of the value.
