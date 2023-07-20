@@ -12,7 +12,7 @@ pub mod value;
 #[cfg(test)]
 mod tests;
 
-use std::{collections::HashMap, ops::Deref};
+use std::{cell::RefCell, collections::HashMap, ops::Deref};
 
 use crate::symbol::{self, Symbol};
 use super::semantic::program;
@@ -35,6 +35,10 @@ pub use panic::Panic;
 pub use source::SourcePos;
 use flow::Flow;
 use mem::Stack;
+
+
+thread_local!(static ALIAS_SET: RefCell<HashMap<u32, usize>> = RefCell::new(HashMap::new()));
+thread_local!(static OBJ_VEC: RefCell<Vec<Value>> = RefCell::new(Vec::new()));
 
 
 /// A runtime instance to execute Hush programs.
@@ -433,7 +437,36 @@ impl Runtime {
 				};
 
 				match left {
-					program::Lvalue::Identifier { slot_ix, .. } => self.stack.store(slot_ix.into(), value),
+					program::Lvalue::Identifier { slot_ix: left_ix, .. } => {
+						match right {
+							program::Expr::Identifier { slot_ix: right_ix, .. } => {
+								let set = ALIAS_SET.with(|a| {
+									if a.borrow().contains_key(&right_ix.0) {
+										Some(*a.borrow().get(&right_ix.0).unwrap())
+									} else {
+										None
+									}
+								});
+								if let Some(s) = set {
+									ALIAS_SET.with(|a| {
+										a.borrow_mut().insert(left_ix.0, s);
+									});
+								}
+
+							}
+							_ => {
+								ALIAS_SET.with(|a| {
+									let len = OBJ_VEC.with(|o| { o.borrow().len() });
+									a.borrow_mut().insert(left_ix.0, len);
+								});
+								
+								OBJ_VEC.with(|o| {
+									o.borrow_mut().push(value.copy());
+								});
+							}
+						}
+						self.stack.store(left_ix.into(), value);
+					}
 
 					program::Lvalue::Access { object, field, pos } => {
 						let (obj, obj_pos) = match self.eval_expr(object)? {
