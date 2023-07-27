@@ -450,22 +450,8 @@ impl Runtime {
 							// Note that strings are immutable.
 
 							(Value::Dict(ref dict), field) => {
-
-								// Removes obj from memo table if changing it.
 								if dict.is_memo_obj && dict.contains(&field) {
-									let memo_table = dict.memo_table.borrow().clone();
-									for (k, v) in memo_table {
-										match v {
-											Value::Dict(ref val_dict) => {
-												if val_dict == dict {
-													dict.memo_table.borrow_mut().remove(&k);
-													println!("key {:?} removed from the memo table", k);
-													break;
-												}
-											},
-											_ => panic!("the memoization table must contain dics as values"),
-										}
-									}
+									return Err(Panic::user(Value::from("cannot mutate a memoized object"), obj_pos));
 								}
 								dict.insert(field, value)
 							},
