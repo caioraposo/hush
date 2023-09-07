@@ -619,10 +619,9 @@ impl Runtime {
 				let arguments: Vec<_> = self.arguments.drain(args_start..).collect();
 
 				// Check memoization table
-				let key = arguments.iter().map(|x| x.copy()).collect();
 				if *is_memoized {
-					if memo_table.borrow().contains_key(&key) {
-						return Ok(memo_table.borrow().get(&key).unwrap().copy());
+					if let Some(value) = memo_table.borrow().get(&arguments) {
+						return Ok(value.copy());
 					}
 				}
 
@@ -635,8 +634,8 @@ impl Runtime {
 					.map_err(|_| Panic::stack_overflow(pos))?;
 
 				// Place arguments
-				for (ix, value) in arguments.into_iter().enumerate() {
-					self.stack.store(mem::SlotIx(ix as u32), value);
+				for (ix, value) in arguments.iter().enumerate() {
+					self.stack.store(mem::SlotIx(ix as u32), value.copy());
 				}
 
 				// Place captured variables.
@@ -674,7 +673,7 @@ impl Runtime {
 
 				// Update memoization table
 				if *is_memoized {
-					memo_table.borrow_mut().insert(key, value.copy());
+					memo_table.borrow_mut().insert(arguments, value.copy());
 				}
 				value
 			}
