@@ -440,30 +440,27 @@ impl Runtime {
 					program::Lvalue::Identifier { slot_ix: left_ix, .. } => {
 						match right {
 							program::Expr::Identifier { slot_ix: right_ix, .. } => {
-								let set = ALIAS_SET.with(|a| {
-									if a.borrow().contains_key(&right_ix.0) {
-										Some(*a.borrow().get(&right_ix.0).unwrap())
-									} else {
-										None
+								ALIAS_SET.with(|a| {
+									if let Some(s) = a.borrow().get(&right_ix.0) {
+										a.borrow_mut().insert(left_ix.0, *s);
 									}
 								});
-								if let Some(s) = set {
-									ALIAS_SET.with(|a| {
-										a.borrow_mut().insert(left_ix.0, s);
-									});
-								}
+							}
+							program::Expr::Call { .. } => {
+								if let Value::Dict(ref dict) = value {
+									if dict.is_memo_obj {
+										ALIAS_SET.with(|a| {
+											let len = OBJ_VEC.with(|o| o.borrow().len());
+											a.borrow_mut().insert(left_ix.0, len);
+										});
 
+										OBJ_VEC.with(|o| {
+											o.borrow_mut().push(value.copy());
+										});
+									}
+								}
 							}
-							_ => {
-								ALIAS_SET.with(|a| {
-									let len = OBJ_VEC.with(|o| { o.borrow().len() });
-									a.borrow_mut().insert(left_ix.0, len);
-								});
-								
-								OBJ_VEC.with(|o| {
-									o.borrow_mut().push(value.copy());
-								});
-							}
+							_ => {}
 						}
 						self.stack.store(left_ix.into(), value);
 					}

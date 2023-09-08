@@ -28,31 +28,34 @@ pub mod keys {
 /// A dict in the language.
 #[derive(Debug, Default, PartialEq, Eq)]
 #[derive(Trace, Finalize)]
-pub struct Dict(Gc<GcCell<HashMap<Value, Value>>>);
+pub struct Dict {
+	pub dict: Gc<GcCell<HashMap<Value, Value>>>,
+	pub is_memo_obj: bool,
+}
 
 
 impl Dict {
 	/// Crate a new empty dict.
 	pub fn new(dict: HashMap<Value, Value>) -> Self {
-		Self(Gc::new(GcCell::new(dict)))
+		Self { dict: Gc::new(GcCell::new(dict)), is_memo_obj: false }
 	}
 
 
 	/// Shallow copy.
 	pub fn copy(&self) -> Self {
-		Self(self.0.clone())
+		Self { dict: self.dict.clone(), is_memo_obj: self.is_memo_obj }
 	}
 
 
 	/// Borrow the hashmap.
 	pub fn borrow(&self) -> GcCellRef<HashMap<Value, Value>> {
-		self.0.deref().borrow()
+		self.dict.deref().borrow()
 	}
 
 
 	/// Borrow the hashmap mutably.
 	pub fn borrow_mut(&self) -> GcCellRefMut<HashMap<Value, Value>> {
-		self.0.deref().borrow_mut()
+		self.dict.deref().borrow_mut()
 	}
 
 
