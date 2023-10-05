@@ -12,7 +12,7 @@ pub mod value;
 #[cfg(test)]
 mod tests;
 
-use std::{cell::RefCell, collections::HashMap, ops::Deref};
+use std::{collections::HashMap, ops::Deref};
 
 use crate::symbol::{self, Symbol};
 use super::semantic::program;
@@ -35,10 +35,6 @@ pub use panic::Panic;
 pub use source::SourcePos;
 use flow::Flow;
 use mem::Stack;
-
-
-thread_local!(static ALIAS_SET: RefCell<HashMap<u32, usize>> = RefCell::new(HashMap::new()));
-thread_local!(static OBJ_VEC: RefCell<Vec<Value>> = RefCell::new(Vec::new()));
 
 
 /// A runtime instance to execute Hush programs.
@@ -440,29 +436,11 @@ impl Runtime {
 					program::Lvalue::Identifier { slot_ix: left_ix, .. } => {
 						match right {
 							program::Expr::Identifier { slot_ix: right_ix, .. } => {
-								ALIAS_SET.with(|a| {
-									if let Some(s) = a.borrow().get(&right_ix.0) {
-										a.borrow_mut().insert(left_ix.0, *s);
-									}
-								});
+								let value = self.stack.capture(right_ix.into());
+								self.stack.place(left_ix.into(), value);
 							}
-							program::Expr::Call { .. } => {
-								if let Value::Dict(ref dict) = value {
-									if dict.is_memo_obj {
-										ALIAS_SET.with(|a| {
-											let len = OBJ_VEC.with(|o| o.borrow().len());
-											a.borrow_mut().insert(left_ix.0, len);
-										});
-
-										OBJ_VEC.with(|o| {
-											o.borrow_mut().push(value.copy());
-										});
-									}
-								}
-							}
-							_ => {}
+							_ => self.stack.store(left_ix.into(), value),
 						}
-						self.stack.store(left_ix.into(), value);
 					}
 
 					program::Lvalue::Access { object, field, pos } => {
@@ -479,7 +457,18 @@ impl Runtime {
 						match (obj, field) {
 							// Note that strings are immutable.
 
-							(Value::Dict(ref dict), field) => dict.insert(field, value),
+							(Value::Dict(ref dict), field) => {
+								if dict.is_memo_obj {
+									// Get the identifier of dict.
+									if let program::Expr::Identifier { slot_ix, .. } = **object {
+										let new_dict = dict.deep_copy();
+										new_dict.insert(field, value);
+										self.stack.store(slot_ix.into(), Value::Dict(new_dict));
+									}
+								} else {
+									dict.insert(field, value);
+								}
+							},
 
 							(Value::Array(ref array), Value::Int(ix)) if ix >= array.len() => return Err(
 								Panic::index_out_of_bounds(Value::Int(ix), field_pos)
@@ -662,7 +651,7 @@ impl Runtime {
 
 				let flow = result?;
 
-				let value = match flow {
+				let mut value = match flow {
 					Flow::Regular(value) => value,
 					Flow::Return(value) => value,
 					Flow::Break => panic!("break outside loop"),
@@ -670,6 +659,9 @@ impl Runtime {
 
 				// Update memoization table
 				if *is_memoized {
+					if let Value::Dict(ref mut dict) = value {
+						dict.is_memo_obj = true;
+					}
 					memo_table.borrow_mut().insert(arguments, value.copy());
 				}
 				value

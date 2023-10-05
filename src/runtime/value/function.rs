@@ -22,7 +22,7 @@ use super::{
 
 /// A function object.
 /// Ord is required in order to be able to have dicts as dict keys.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[derive(Trace, Finalize)]
 pub enum Function {
 	Hush(HushFun),
@@ -64,7 +64,7 @@ impl<T: NativeFun> From<T> for Function {
 
 /// A function object implemented in Hush code.
 /// May contain captured variables.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[derive(Trace, Finalize)]
 pub struct HushFun {
 	/// How many parameters the function expects.
@@ -215,7 +215,7 @@ pub trait NativeFun: Trace + Finalize + 'static {
 
 
 /// A garbage-collected native function.
-#[derive(Trace, Finalize)]
+#[derive(Trace, Finalize, Clone)]
 pub struct RustFun(Gc<Box<dyn NativeFun>>);
 
 

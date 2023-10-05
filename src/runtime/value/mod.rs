@@ -101,7 +101,7 @@ impl<'a> From<&'a Value> for Type {
 
 
 /// A value of dynamic type in the language.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[derive(Trace, Finalize)]
 pub enum Value {
 	Nil,
@@ -116,7 +116,6 @@ pub enum Value {
 	Function(Function),
 	Error(Error),
 }
-
 
 impl Value {
 	/// Make a shallow copy of the value.

@@ -10,7 +10,7 @@ use super::{IndexOutOfBounds, Value, Str};
 
 
 /// Strings in Hush are immutable.
-#[derive(Debug, Eq, PartialOrd, Ord)]
+#[derive(Debug, Eq, PartialOrd, Ord, Clone)]
 #[derive(Trace, Finalize)]
 pub struct Error {
 	pub description: Str,

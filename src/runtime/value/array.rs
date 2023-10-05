@@ -10,7 +10,7 @@ use super::{EmptyCollection, IndexOutOfBounds, Value};
 
 
 /// An array in the language.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 #[derive(Trace, Finalize)]
 pub struct Array(Gc<GcCell<Vec<Value>>>);
 

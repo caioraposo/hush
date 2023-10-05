@@ -26,7 +26,7 @@ pub mod keys {
 
 
 /// A dict in the language.
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
 #[derive(Trace, Finalize)]
 pub struct Dict {
 	pub dict: Gc<GcCell<HashMap<Value, Value>>>,
@@ -40,10 +40,14 @@ impl Dict {
 		Self { dict: Gc::new(GcCell::new(dict)), is_memo_obj: false }
 	}
 
-
 	/// Shallow copy.
 	pub fn copy(&self) -> Self {
 		Self { dict: self.dict.clone(), is_memo_obj: self.is_memo_obj }
+	}
+
+	/// Deep copy.
+	pub fn deep_copy(&self) -> Self {
+		Self { dict: Gc::new(GcCell::new((*self.dict.borrow()).clone())), is_memo_obj: self.is_memo_obj }
 	}
 
 
